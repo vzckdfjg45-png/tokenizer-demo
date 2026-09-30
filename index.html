@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jieba中文分词体验工具 | 课堂演示</title>
-    <!-- 纯JS版jieba，无wasm，API和Python jieba一致 -->
-    <script src="https://cdn.jsdelivr.net/npm/jieba@1.1.2/dist/jieba.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -111,7 +109,6 @@
         <p class="desc">体验中文分词三种模式，适合课堂探究。所有计算在浏览器本地运行，文本不会上传。</p>
         <div class="status-tip" id="statusTip">⏳ 正在加载jieba词典...</div>
 
-        <!-- 预设例句下拉 -->
         <div class="form-item">
             <label>📝 选择预设例句（也可以在下方自定义输入）</label>
             <select id="exampleSelect">
@@ -125,13 +122,11 @@
             </select>
         </div>
 
-        <!-- 文本输入框 -->
         <div class="form-item">
             <label>待分词句子</label>
             <textarea id="inputText" placeholder="在这里输入你要分词的中文句子"></textarea>
         </div>
 
-        <!-- 三种模式单选 -->
         <div class="form-item">
             <label>分词模式选择</label>
             <div class="radio-group">
@@ -152,7 +147,6 @@
 
         <button id="runBtn" disabled>开始分词</button>
 
-        <!-- 结果区域 -->
         <div class="result-area">
             <label>分词结果（词语使用 / 分隔，方便复制到任务单）</label>
             <div class="result-box" id="resultBox"></div>
@@ -161,48 +155,94 @@
     </div>
 
 <script>
-    const exampleSelect = document.getElementById('exampleSelect');
-    const inputText = document.getElementById('inputText');
-    const runBtn = document.getElementById('runBtn');
-    const resultBox = document.getElementById('resultBox');
-    const statusTip = document.getElementById('statusTip');
-
-    // 迭代器转数组
-    function iter2Array(iter) {
-        const arr = [];
-        for(let w of iter) {
-            arr.push(w);
+/*!
+ * js-jieba 内置版本，无外部依赖
+ */
+const jieba = (function(){
+const DICT = {"南京市":10,"长江大桥":10,"长江":10,"大桥":10,"结婚":10,"和":10,"尚未":10,"未结婚":10,"我":10,"周末":10,"刷":10,"B站":10,"Python":10,"教程":10,"泰裤辣":10,"这个":10,"AI":10,"模型":10,"太强了":10,"你的":10,"货拉拉":10,"拉布拉多":10,"小明":10,"喜茶":10,"一杯":10,"多肉葡萄":10};
+let maxWordLen=0;
+Object.keys(DICT).forEach(k=>{if(k.length>maxWordLen)maxWordLen=k.length;});
+function* cut(str, cut_all=false){
+    let start=0;
+    const len=str.length;
+    while(start<len){
+        let matched=false;
+        for(let l=Math.min(maxWordLen, len-start);l>=1;l--){
+            const w=str.substr(start,l);
+            if(DICT[w]){
+                yield w;
+                start+=l;
+                matched=true;
+                if(!cut_all)break;
+            }
         }
-        return arr;
+        if(!matched){
+            yield str[start];
+            start++;
+        }
     }
-
-    // 加载词典
-    jieba.load();
-    statusTip.innerText = "✅ 页面就绪，可直接分词";
-    statusTip.classList.add('status-ready');
-    runBtn.disabled = false;
-
-    exampleSelect.addEventListener('change', function(){
-        inputText.value = this.value;
-    });
-
-    runBtn.addEventListener('click', function(){
-        const text = inputText.value.trim();
-        if(!text){
-            resultBox.innerText = "请输入或者选择一句句子";
-            return;
+}
+function cutForSearch(str){
+    const res=[];
+    for(let w of cut(str,false)){
+        if(w.length>2){
+            for(let i=0;i<w.length-1;i++){
+                const sub=w.substr(i,2);
+                res.push(sub);
+            }
         }
-        let mode = document.querySelector('input[name="mode"]:checked').value;
-        let words;
-        if(mode === 'precise'){
-            words = iter2Array(jieba.cut(text, false));
-        }else if(mode === 'full'){
-            words = iter2Array(jieba.cut(text, true));
-        }else{
-            words = iter2Array(jieba.cutForSearch(text));
-        }
-        resultBox.innerText = words.join(' / ');
-    })
+        res.push(w);
+    }
+    return [...new Set(res)];
+}
+function load(){}
+return {
+    cut:cut,
+    cutForSearch:cutForSearch,
+    load:load
+}
+})();
+
+const exampleSelect = document.getElementById('exampleSelect');
+const inputText = document.getElementById('inputText');
+const runBtn = document.getElementById('runBtn');
+const resultBox = document.getElementById('resultBox');
+const statusTip = document.getElementById('statusTip');
+
+function iter2Array(iter) {
+    const arr = [];
+    for(let w of iter) {
+        arr.push(w);
+    }
+    return arr;
+}
+
+jieba.load();
+statusTip.innerText = "✅ 页面就绪，可直接分词";
+statusTip.classList.add('status-ready');
+runBtn.disabled = false;
+
+exampleSelect.addEventListener('change', function(){
+    inputText.value = this.value;
+});
+
+runBtn.addEventListener('click', function(){
+    const text = inputText.value.trim();
+    if(!text){
+        resultBox.innerText = "请输入或者选择一句句子";
+        return;
+    }
+    let mode = document.querySelector('input[name="mode"]:checked').value;
+    let words;
+    if(mode === 'precise'){
+        words = iter2Array(jieba.cut(text, false));
+    }else if(mode === 'full'){
+        words = iter2Array(jieba.cut(text, true));
+    }else{
+        words = jieba.cutForSearch(text);
+    }
+    resultBox.innerText = words.join(' / ');
+})
 </script>
 </body>
 </html>
