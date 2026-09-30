@@ -1,581 +1,197 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分词器 · 全模式 (jieba) 原理</title>
+    <title>Jieba中文分词体验 | 自然语言处理课堂工具</title>
+    <!-- 国内BOOTCDN镜像，国内访问稳定 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/jieba/0.2.2/jieba.min.js"></script>
     <style>
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         body {
-            background-color: #f0f4ff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 16px;
+            background-color: #f7f8fa;
+            color: #222;
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: 0 auto;
         }
-        .app-container {
-            max-width: 1280px;
-            width: 100%;
-            height: 94vh;
-            max-height: 900px;
-            background-color: #f8faff;
-            border-radius: 32px;
-            box-shadow: 0 12px 30px rgba(0, 20, 60, 0.08);
-            padding: 18px 24px 20px 24px;
-            border: 1px solid #dbe4f0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        /* 顶部栏 */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-        .title-section h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: #0b2b4f;
-            letter-spacing: -0.3px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .title-section h1 span {
-            font-size: 16px;
-            font-weight: 500;
-            color: #3f5e8c;
-            background: #e5ecfe;
-            padding: 4px 12px;
-            border-radius: 40px;
-            letter-spacing: 0.3px;
-        }
-        .subhead {
-            font-size: 14px;
-            color: #2f4b74;
-            margin-top: 2px;
-            font-weight: 400;
-            opacity: 0.85;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-        }
-        .btn {
-            border: none;
-            padding: 8px 22px;
-            border-radius: 60px;
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            box-shadow: 0 3px 8px rgba(0, 20, 70, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            white-space: nowrap;
-        }
-        .btn-primary { background: #2a6df4; color: white; }
-        .btn-primary:hover { background: #1d5ad6; transform: scale(1.02); }
-        .btn-secondary { background: #f0c4c4; color: #632a2a; }
-        .btn-secondary:hover { background: #e5b0b0; }
-        .btn-tertiary { background: #6d8df8; color: white; }
-        .btn-tertiary:hover { background: #5476e6; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-        /* 主内容区 */
-        .main-panel {
-            display: flex;
-            gap: 18px;
-            flex: 1;
-            min-height: 0; /* 允许内部滚动 */
-        }
-        .left-column {
-            flex: 1.1;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            min-width: 300px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-        .right-column {
-            flex: 1.5;
+        .container {
             background: #ffffff;
-            border-radius: 24px;
-            padding: 16px 18px;
-            box-shadow: 0 6px 14px rgba(0, 20, 50, 0.03);
-            border: 1px solid #e7eefc;
-            display: flex;
-            flex-direction: column;
-            min-width: 380px;
-            overflow: hidden;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         }
-
-        /* 卡片通用 */
-        .card {
-            background: white;
-            border-radius: 20px;
-            padding: 12px 18px;
-            box-shadow: 0 4px 10px rgba(0, 20, 50, 0.03);
-            border: 1px solid #e7eefc;
-            flex-shrink: 0;
-        }
-        .card-label {
-            font-size: 13px;
-            font-weight: 500;
-            color: #3e5d8a;
-            margin-bottom: 4px;
-            letter-spacing: 0.2px;
-        }
-        .big-text {
+        h1 {
             font-size: 26px;
-            font-weight: 700;
-            color: #0e2d55;
-            line-height: 1.35;
-            word-break: break-word;
-            letter-spacing: 1px;
+            margin-bottom: 8px;
         }
-        .big-text-sm {
-            font-size: 22px;
-            font-weight: 700;
-            color: #1c3b6b;
-            word-break: break-word;
-            letter-spacing: 1px;
-        }
-        .attempt-box {
-            background: #f2f7ff;
-            border-radius: 16px;
-            padding: 10px 16px;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            font-weight: 700;
-            color: #10315e;
-            border: 1px dashed #b7cef0;
-            letter-spacing: 2px;
-        }
-        .dictionary-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 2px;
-        }
-        .dict-tag {
-            background: #edf3fe;
-            border-radius: 30px;
-            padding: 4px 14px;
-            font-size: 17px;
-            font-weight: 600;
-            color: #1f4172;
-            border: 1px solid #cfdefa;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-            transition: background 0.15s;
-        }
-        .result-text {
-            font-size: 24px;
-            font-weight: 700;
-            color: #0f2d57;
-            letter-spacing: 1.5px;
-            line-height: 1.4;
-            word-break: break-word;
-            min-height: 36px;
-        }
-
-        /* 右侧日志区 */
-        .log-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 12px;
-            flex-shrink: 0;
-        }
-        .round-badge {
-            background: #dce8ff;
-            padding: 6px 18px;
-            border-radius: 60px;
-            font-size: 16px;
-            font-weight: 600;
-            color: #1f3e6b;
-            white-space: nowrap;
-        }
-        .log-container {
-            flex: 1;
-            background: #f9fcff;
-            border-radius: 18px;
-            padding: 12px 14px;
-            border: 1px solid #d9e6fb;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 14px;
-            color: #1f3b5e;
-            line-height: 1.4;
-        }
-        .log-entry {
-            padding: 6px 12px;
-            background: white;
-            border-radius: 14px;
-            border-left: 5px solid #2a6df4;
-            box-shadow: 0 1px 4px rgba(0, 20, 50, 0.02);
-            word-break: break-word;
-            flex-shrink: 0;
-        }
-        .log-entry-highlight {
-            background: #e9f0ff;
-            border-left-color: #0c4bc2;
-            font-weight: 500;
-        }
-        .log-placeholder {
-            color: #6d8bb0;
-            font-style: italic;
+        .desc {
+            color: #555;
+            margin-bottom: 24px;
             font-size: 15px;
-            text-align: center;
-            padding: 30px 0;
         }
-        .log-tag {
-            display: inline-block;
-            background: #cadcff;
-            border-radius: 30px;
-            padding: 1px 10px;
-            font-size: 12px;
+        .form-item {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
             font-weight: 600;
-            color: #00337a;
-            margin-right: 8px;
+            margin-bottom: 8px;
         }
-        /* 扫描高亮 */
-        .scan-char {
-            transition: background 0.15s, color 0.15s;
-            padding: 2px 0;
-            border-radius: 6px;
-            display: inline-block;
+        select, textarea, button {
+            width:100%;
+            font-size:16px;
+            padding:10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
         }
-        .scan-char.active {
-            background: #ffd966;
-            color: #0b2b4f;
-            font-weight: 900;
-            box-shadow: 0 0 0 2px #ffb347;
+        textarea {
+            min-height: 100px;
+            resize: vertical;
         }
-        .scan-char.matched {
-            background: #b3d9ff;
-            color: #00337a;
-            font-weight: 700;
+        .radio-group {
+            display:flex;
+            gap:16px;
+            flex-wrap: wrap;
+            padding:8px 0;
         }
-        .scan-char.done {
-            background: transparent;
-            color: #8aa0c0;
+        .radio-item {
+            display:flex;
+            align-items:center;
+            gap:4px;
         }
-        /* 滚动条美化 */
-        .log-container::-webkit-scrollbar { width: 6px; }
-        .log-container::-webkit-scrollbar-track { background: #e2ecfe; border-radius: 10px; }
-        .log-container::-webkit-scrollbar-thumb { background: #b0c8f0; border-radius: 10px; }
-        .left-column::-webkit-scrollbar { width: 0; }
-        .left-column::-webkit-scrollbar-track { background: transparent; }
-        .left-column::-webkit-scrollbar-thumb { background: transparent; }
+        button {
+            background:#2563eb;
+            color:white;
+            border:none;
+            cursor:pointer;
+            font-weight:600;
+        }
+        button:hover {
+            background:#1d4ed8;
+        }
+        .result-area {
+            margin-top:24px;
+        }
+        .result-box {
+            background:#f3f4f6;
+            padding:16px;
+            border-radius:8px;
+            min-height:60px;
+            white-space:pre-wrap;
+            line-height:1.6;
+        }
+        .tip {
+            margin-top:12px;
+            color:#666;
+            font-size:14px;
+        }
+        .status-tip{
+            color:#2563eb;
+            margin-bottom:10px;
+        }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- 顶部 -->
-        <div class="header">
-            <div class="title-section">
-                <h1>
-                    分词器 · 全模式
-                    <span>jieba 全模式原理</span>
-                </h1>
-                <div class="subhead">
-                    点击按钮，观察全模式引擎逐字扫描并输出所有成词片段 “他来到了北京大学”
+    <div class="container">
+        <h1>Jieba 中文分词体验工具</h1>
+        <p class="desc">体验中文分词三种模式，适合课堂探究。所有计算在浏览器本地运行，文本不会上传。</p>
+        <div class="status-tip" id="statusTip">✅ 页面就绪，可直接分词</div>
+
+        <!-- 预设例句下拉 -->
+        <div class="form-item">
+            <label>📝 选择预设例句（也可以在下方自定义输入）</label>
+            <select id="exampleSelect">
+                <option value="">--- 不选择，自己输入句子 ---</option>
+                <option value="南京市长江大桥">南京市长江大桥（活动一）</option>
+                <option value="结婚的和尚未结婚的">结婚的和尚未结婚的（活动一）</option>
+                <option value="我周末去刷B站看Python教程">我周末去刷B站看Python教程（活动二）</option>
+                <option value="泰裤辣，这个AI模型太强了">泰裤辣，这个AI模型太强了（活动二）</option>
+                <option value="你的货拉拉拉不拉拉布拉多">你的货拉拉拉不拉拉布拉多（活动二）</option>
+                <option value="小明去喜茶买一杯多肉葡萄">小明去喜茶买一杯多肉葡萄（活动二）</option>
+            </select>
+        </div>
+
+        <!-- 文本输入框 -->
+        <div class="form-item">
+            <label>待分词句子</label>
+            <textarea id="inputText" placeholder="在这里输入你要分词的中文句子"></textarea>
+        </div>
+
+        <!-- 三种分词模式单选 -->
+        <div class="form-item">
+            <label>分词模式选择</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="mode" id="precise" value="precise" checked>
+                    <label for="precise">精确模式</label>
                 </div>
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="runBtn">▶ 全模式引擎</button>
-                <button class="btn btn-secondary" id="pauseBtn" disabled>⏸ 暂停</button>
-                <button class="btn btn-tertiary" id="resetBtn">↺ 初始化</button>
+                <div class="radio-item">
+                    <input type="radio" name="mode" id="full" value="full">
+                    <label for="full">全模式</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="mode" id="search" value="search">
+                    <label for="search">搜索引擎模式</label>
+                </div>
             </div>
         </div>
 
-        <!-- 主面板 -->
-        <div class="main-panel">
-            <!-- 左侧 -->
-            <div class="left-column">
-                <!-- 输入句子 + 扫描高亮 -->
-                <div class="card">
-                    <div class="card-label">输入句子（扫描高亮）</div>
-                    <div class="big-text" id="inputSentenceDisplay"></div>
-                </div>
+        <button id="runBtn">开始分词</button>
 
-                <!-- 当前剩余 -->
-                <div class="card">
-                    <div class="card-label">当前剩余</div>
-                    <div class="big-text-sm" id="remainingText">他来到了北京大学</div>
-                </div>
-
-                <!-- 当前尝试片段 -->
-                <div class="card">
-                    <div class="card-label">当前尝试片段</div>
-                    <div class="attempt-box" id="attemptFragment">等待开始</div>
-                </div>
-
-                <!-- 词典 -->
-                <div class="card">
-                    <div class="card-label">词典 (jieba 全模式)</div>
-                    <div class="dictionary-tags" id="dictTags">
-                        <span class="dict-tag">他</span>
-                        <span class="dict-tag">来到</span>
-                        <span class="dict-tag">了</span>
-                        <span class="dict-tag">北京</span>
-                        <span class="dict-tag">北京大学</span>
-                        <span class="dict-tag">大学</span>
-                    </div>
-                </div>
-
-                <!-- 最终分词结果 -->
-                <div class="card">
-                    <div class="card-label">最终分词结果</div>
-                    <div class="result-text" id="finalResult">—</div>
-                </div>
-            </div>
-
-            <!-- 右侧日志 -->
-            <div class="right-column">
-                <div class="log-header">
-                    <div class="round-badge" id="roundBadge">轮次：未开始</div>
-                    <div class="text-muted" style="font-size: 13px; color:#5f7da0;">扫描日志（逐字起点，截取所有词典词）</div>
-                </div>
-                <div class="log-container" id="logContainer">
-                    <div class="log-placeholder">点击「全模式引擎」开始演示</div>
-                </div>
-            </div>
+        <!-- 结果区域 -->
+        <div class="result-area">
+            <label>分词结果（词语使用 / 分隔，方便复制到任务单）</label>
+            <div class="result-box" id="resultBox"></div>
+            <p class="tip">💡提示：活动二统一使用【精确模式】进行测试。</p>
         </div>
     </div>
 
-    <script>
-        (function() {
-            // ---------- 配置 ----------
-            const SENTENCE = "他来到了北京大学";
-            // jieba 全模式词典（包含所有可能成词的片段）
-            const DICT = new Set([
-                "他", "来到", "了", "北京", "北京大学", "大学"
-            ]);
+<script>
+    const exampleSelect = document.getElementById('exampleSelect');
+    const inputText = document.getElementById('inputText');
+    const runBtn = document.getElementById('runBtn');
+    const resultBox = document.getElementById('resultBox');
 
-            // 构建所有子步骤：每个起点，尝试所有长度，命中则记录
-            function buildSubSteps() {
-                const steps = [];
-                for (let i = 0; i < SENTENCE.length; i++) {
-                    for (let len = 1; i + len <= SENTENCE.length; len++) {
-                        const substr = SENTENCE.substring(i, i + len);
-                        const found = DICT.has(substr);
-                        steps.push({
-                            index: i,
-                            length: len,
-                            substr: substr,
-                            found: found,
-                            remaining: SENTENCE.substring(i),
-                        });
-                    }
-                }
-                return steps;
-            }
+    // 迭代器转数组
+    function iter2Array(iter) {
+        const arr = [];
+        for(let w of iter) {
+            arr.push(w);
+        }
+        return arr;
+    }
 
-            const allSteps = buildSubSteps();
-            let stepPointer = 0;
-            let outputTokens = [];
-            let isRunning = false;
-            let timer = null;
+    // 下拉填充文本
+    exampleSelect.addEventListener('change', function(){
+        inputText.value = this.value;
+    });
 
-            // DOM 元素
-            const inputSentenceDisplay = document.getElementById('inputSentenceDisplay');
-            const remainingTextEl = document.getElementById('remainingText');
-            const attemptFragmentEl = document.getElementById('attemptFragment');
-            const finalResultEl = document.getElementById('finalResult');
-            const logContainer = document.getElementById('logContainer');
-            const roundBadge = document.getElementById('roundBadge');
-            const runBtn = document.getElementById('runBtn');
-            const pauseBtn = document.getElementById('pauseBtn');
-            const resetBtn = document.getElementById('resetBtn');
-
-            // 初始化输入句子的字符span
-            function initSentenceDisplay() {
-                inputSentenceDisplay.innerHTML = '';
-                for (let i = 0; i < SENTENCE.length; i++) {
-                    const span = document.createElement('span');
-                    span.className = 'scan-char';
-                    span.textContent = SENTENCE[i];
-                    span.dataset.index = i;
-                    inputSentenceDisplay.appendChild(span);
-                }
-            }
-
-            // 更新句子高亮：根据当前 step 的 index 和 length
-            function updateSentenceHighlight(step) {
-                const spans = inputSentenceDisplay.querySelectorAll('.scan-char');
-                spans.forEach((span, idx) => {
-                    span.classList.remove('active', 'matched');
-                });
-                if (!step) return;
-                // 高亮正在尝试的区间 [index, index+length)
-                for (let i = step.index; i < step.index + step.length && i < spans.length; i++) {
-                    spans[i].classList.add('active');
-                }
-                // 如果命中，把命中的区间用另一种颜色标记（可保留之前命中的痕迹？这里简单处理：命中后加matched类，但会被下一次清掉）
-                if (step.found) {
-                    for (let i = step.index; i < step.index + step.length && i < spans.length; i++) {
-                        spans[i].classList.remove('active');
-                        spans[i].classList.add('matched');
-                    }
-                }
-            }
-
-            // 清除所有高亮
-            function clearHighlight() {
-                const spans = inputSentenceDisplay.querySelectorAll('.scan-char');
-                spans.forEach(span => span.classList.remove('active', 'matched'));
-            }
-
-            // 重置所有状态
-            function resetAll() {
-                if (timer) {
-                    clearInterval(timer);
-                    timer = null;
-                }
-                isRunning = false;
-                stepPointer = 0;
-                outputTokens = [];
-                // 清空日志
-                logContainer.innerHTML = '<div class="log-placeholder">点击「全模式引擎」开始演示</div>';
-                // UI 重置
-                remainingTextEl.textContent = SENTENCE;
-                attemptFragmentEl.textContent = '等待开始';
-                finalResultEl.textContent = '—';
-                roundBadge.textContent = '轮次：未开始';
-                runBtn.disabled = false;
-                pauseBtn.disabled = true;
-                pauseBtn.textContent = '⏸ 暂停';
-                clearHighlight();
-                // 确保句子显示完整
-                initSentenceDisplay();
-            }
-
-            // 执行一步
-            function advance() {
-                if (stepPointer >= allSteps.length) {
-                    if (timer) {
-                        clearInterval(timer);
-                        timer = null;
-                    }
-                    isRunning = false;
-                    runBtn.disabled = false;
-                    pauseBtn.disabled = true;
-                    // 最终完成
-                    finalResultEl.textContent = outputTokens.join(' / ') || '（无）';
-                    remainingTextEl.textContent = '';
-                    attemptFragmentEl.textContent = '完成';
-                    roundBadge.textContent = `轮次：完成 (共 ${outputTokens.length} 个词)`;
-                    clearHighlight();
-                    // 日志补一条完成
-                    const entry = document.createElement('div');
-                    entry.className = 'log-entry log-entry-highlight';
-                    entry.innerHTML = `<span class="log-tag">✓</span> 全模式扫描结束，最终结果：${outputTokens.join(' / ') || '无'}`;
-                    logContainer.appendChild(entry);
-                    logContainer.scrollTop = logContainer.scrollHeight;
-                    return;
-                }
-
-                const step = allSteps[stepPointer];
-                // 更新剩余文本
-                remainingTextEl.textContent = SENTENCE.substring(step.index);
-                // 更新当前尝试片段
-                attemptFragmentEl.textContent = step.substr;
-                // 更新轮次
-                roundBadge.textContent = `轮次：起始于「${SENTENCE[step.index]}」 (位置 ${step.index + 1})`;
-                // 更新句子高亮
-                updateSentenceHighlight(step);
-                // 如果命中，加入 tokens
-                if (step.found) {
-                    outputTokens.push(step.substr);
-                    finalResultEl.textContent = outputTokens.join(' / ');
-                }
-                // 添加日志
-                const placeholder = logContainer.querySelector('.log-placeholder');
-                if (placeholder) placeholder.remove();
-
-                const entry = document.createElement('div');
-                entry.className = 'log-entry' + (step.found ? ' log-entry-highlight' : '');
-                if (step.found) {
-                    entry.innerHTML = `<span class="log-tag">✓</span> 从「${SENTENCE[step.index]}」开始，截取 ${step.length} 字 → “<strong>${step.substr}</strong>” 在词典中，输出。`;
-                } else {
-                    entry.innerHTML = `<span class="log-tag" style="background:#d3dff5;">✗</span> 从「${SENTENCE[step.index]}」开始，截取 ${step.length} 字 → “${step.substr}” 不在词典。`;
-                }
-                logContainer.appendChild(entry);
-                logContainer.scrollTop = logContainer.scrollHeight;
-
-                stepPointer++;
-            }
-
-            // 启动自动播放
-            function startAutoPlay() {
-                if (timer) {
-                    clearInterval(timer);
-                    timer = null;
-                }
-                if (stepPointer >= allSteps.length) {
-                    resetAll();
-                }
-                isRunning = true;
-                runBtn.disabled = true;
-                pauseBtn.disabled = false;
-                pauseBtn.textContent = '⏸ 暂停';
-                timer = setInterval(() => {
-                    advance();
-                    if (stepPointer >= allSteps.length) {
-                        clearInterval(timer);
-                        timer = null;
-                        isRunning = false;
-                        runBtn.disabled = false;
-                        pauseBtn.disabled = true;
-                    }
-                }, 500);
-            }
-
-            // 暂停
-            function pauseAutoPlay() {
-                if (timer) {
-                    clearInterval(timer);
-                    timer = null;
-                }
-                isRunning = false;
-                runBtn.disabled = false;
-                pauseBtn.disabled = true;
-                pauseBtn.textContent = '⏸ 暂停';
-            }
-
-            // 事件绑定
-            runBtn.addEventListener('click', () => {
-                if (!isRunning && stepPointer >= allSteps.length) {
-                    resetAll();
-                }
-                startAutoPlay();
-            });
-            pauseBtn.addEventListener('click', pauseAutoPlay);
-            resetBtn.addEventListener('click', resetAll);
-
-            // 初始化
-            initSentenceDisplay();
-            resetAll();
-        })();
-    </script>
+    runBtn.addEventListener('click', function(){
+        const text = inputText.value.trim();
+        if(!text){
+            resultBox.innerText = "请输入或者选择一句句子";
+            return;
+        }
+        let mode = document.querySelector('input[name="mode"]:checked').value;
+        let words = [];
+        if(mode === 'precise'){
+            const gen = jieba.cut(text, false);
+            words = iter2Array(gen);
+        }else if(mode === 'full'){
+            const gen = jieba.cut(text, true);
+            words = iter2Array(gen);
+        }else if(mode === 'search'){
+            const gen = jieba.cutForSearch(text);
+            words = iter2Array(gen);
+        }
+        resultBox.innerText = words.join(' / ');
+    })
+</script>
 </body>
 </html>
