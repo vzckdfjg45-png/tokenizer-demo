@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jieba中文分词体验 | 自然语言处理课堂工具</title>
-    <!-- 国内BOOTCDN镜像，国内访问稳定 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/jieba/0.2.2/jieba.min.js"></script>
+    <title>Jieba中文分词体验工具 | 课堂演示</title>
+    <!-- BOOTCDN国内镜像，jieba-wasm，无需上传js文件 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/jieba-wasm/2.4.0/jieba.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -72,7 +72,11 @@
             cursor:pointer;
             font-weight:600;
         }
-        button:hover {
+        button:disabled{
+            background:#94a3b8;
+            cursor:not-allowed;
+        }
+        button:hover:not(:disabled) {
             background:#1d4ed8;
         }
         .result-area {
@@ -92,16 +96,20 @@
             font-size:14px;
         }
         .status-tip{
-            color:#2563eb;
+            color:#ef4444;
             margin-bottom:10px;
+            font-weight:bold;
+        }
+        .status-ready{
+            color:#22c55e;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Jieba 中文分词体验工具</h1>
+        <h1>Jieba中文分词体验工具</h1>
         <p class="desc">体验中文分词三种模式，适合课堂探究。所有计算在浏览器本地运行，文本不会上传。</p>
-        <div class="status-tip" id="statusTip">✅ 页面就绪，可直接分词</div>
+        <div class="status-tip" id="statusTip">⏳ 正在加载jieba词典...</div>
 
         <!-- 预设例句下拉 -->
         <div class="form-item">
@@ -123,7 +131,7 @@
             <textarea id="inputText" placeholder="在这里输入你要分词的中文句子"></textarea>
         </div>
 
-        <!-- 三种分词模式单选 -->
+        <!-- 三种模式单选 -->
         <div class="form-item">
             <label>分词模式选择</label>
             <div class="radio-group">
@@ -142,7 +150,7 @@
             </div>
         </div>
 
-        <button id="runBtn">开始分词</button>
+        <button id="runBtn" disabled>开始分词</button>
 
         <!-- 结果区域 -->
         <div class="result-area">
@@ -157,38 +165,42 @@
     const inputText = document.getElementById('inputText');
     const runBtn = document.getElementById('runBtn');
     const resultBox = document.getElementById('resultBox');
+    const statusTip = document.getElementById('statusTip');
 
-    // 迭代器转数组
-    function iter2Array(iter) {
-        const arr = [];
-        for(let w of iter) {
-            arr.push(w);
+    let jieba;
+    // 初始化 jieba-wasm
+    async function initJieba() {
+        try {
+            jieba = await JIEBA.init();
+            statusTip.innerText = "✅ jieba加载完成，可以分词";
+            statusTip.classList.add('status-ready');
+            runBtn.disabled = false;
+        } catch(e) {
+            statusTip.innerText = "❌ jieba加载失败";
+            console.error(e);
         }
-        return arr;
     }
+    initJieba();
 
     // 下拉填充文本
     exampleSelect.addEventListener('change', function(){
         inputText.value = this.value;
     });
 
-    runBtn.addEventListener('click', function(){
+    runBtn.addEventListener('click', async function(){
         const text = inputText.value.trim();
         if(!text){
             resultBox.innerText = "请输入或者选择一句句子";
             return;
         }
         let mode = document.querySelector('input[name="mode"]:checked').value;
-        let words = [];
+        let words;
         if(mode === 'precise'){
-            const gen = jieba.cut(text, false);
-            words = iter2Array(gen);
+            words = jieba.cut(text, false);
         }else if(mode === 'full'){
-            const gen = jieba.cut(text, true);
-            words = iter2Array(gen);
-        }else if(mode === 'search'){
-            const gen = jieba.cutForSearch(text);
-            words = iter2Array(gen);
+            words = jieba.cut(text, true);
+        }else{
+            words = jieba.cutForSearch(text);
         }
         resultBox.innerText = words.join(' / ');
     })
