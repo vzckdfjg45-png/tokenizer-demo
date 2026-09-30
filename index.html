@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jieba中文分词体验工具 | 课堂演示</title>
-    <!-- BOOTCDN国内镜像，jieba-wasm，无需上传js文件 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/jieba-wasm/2.4.0/jieba.min.js"></script>
+    <!-- 纯JS版jieba，无wasm，API和Python jieba一致 -->
+    <script src="https://cdn.jsdelivr.net/npm/jieba@1.1.2/dist/jieba.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -167,27 +167,26 @@
     const resultBox = document.getElementById('resultBox');
     const statusTip = document.getElementById('statusTip');
 
-    let jieba;
-    // 初始化 jieba-wasm
-    async function initJieba() {
-        try {
-            jieba = await JIEBA.init();
-            statusTip.innerText = "✅ jieba加载完成，可以分词";
-            statusTip.classList.add('status-ready');
-            runBtn.disabled = false;
-        } catch(e) {
-            statusTip.innerText = "❌ jieba加载失败";
-            console.error(e);
+    // 迭代器转数组
+    function iter2Array(iter) {
+        const arr = [];
+        for(let w of iter) {
+            arr.push(w);
         }
+        return arr;
     }
-    initJieba();
 
-    // 下拉填充文本
+    // 加载词典
+    jieba.load();
+    statusTip.innerText = "✅ 页面就绪，可直接分词";
+    statusTip.classList.add('status-ready');
+    runBtn.disabled = false;
+
     exampleSelect.addEventListener('change', function(){
         inputText.value = this.value;
     });
 
-    runBtn.addEventListener('click', async function(){
+    runBtn.addEventListener('click', function(){
         const text = inputText.value.trim();
         if(!text){
             resultBox.innerText = "请输入或者选择一句句子";
@@ -196,11 +195,11 @@
         let mode = document.querySelector('input[name="mode"]:checked').value;
         let words;
         if(mode === 'precise'){
-            words = jieba.cut(text, false);
+            words = iter2Array(jieba.cut(text, false));
         }else if(mode === 'full'){
-            words = jieba.cut(text, true);
+            words = iter2Array(jieba.cut(text, true));
         }else{
-            words = jieba.cutForSearch(text);
+            words = iter2Array(jieba.cutForSearch(text));
         }
         resultBox.innerText = words.join(' / ');
     })
