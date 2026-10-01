@@ -14,48 +14,48 @@
         body {
             background-color: #f7f8fa;
             color: #222;
-            padding: 40px 20px;
-            max-width: 800px;
-            margin: 0 auto;
+            padding:40px 20px;
+            max-width:860px;
+            margin:0 auto;
         }
         .container {
             background: #ffffff;
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-radius:12px;
+            padding:32px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.08);
         }
         h1 {
-            font-size: 26px;
-            margin-bottom: 8px;
+            font-size:26px;
+            margin-bottom:8px;
         }
         .desc {
-            color: #555;
-            margin-bottom: 24px;
-            font-size: 15px;
+            color:#555;
+            margin-bottom:24px;
+            font-size:15px;
         }
         .form-item {
-            margin-bottom: 20px;
+            margin-bottom:20px;
         }
         label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
+            display:block;
+            font-weight:600;
+            margin-bottom:8px;
         }
-        select, textarea, button {
+        select, textarea, input, button {
             width:100%;
             font-size:16px;
             padding:10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
+            border:1px solid #d1d5db;
+            border-radius:8px;
         }
         textarea {
-            min-height: 100px;
-            resize: vertical;
+            min-height:100px;
+            resize:vertical;
         }
         .radio-group {
             display:flex;
             gap:16px;
-            flex-wrap: wrap;
+            flex-wrap:wrap;
             padding:8px 0;
         }
         .radio-item {
@@ -76,6 +76,12 @@
         }
         button:hover:not(:disabled) {
             background:#1d4ed8;
+        }
+        .btn-small{
+            width:auto;
+            display:inline-block;
+            margin-left:8px;
+            padding:8px 14px;
         }
         .result-area {
             margin-top:24px;
@@ -101,6 +107,21 @@
         .status-ready{
             color:#22c55e;
         }
+        .dict-panel{
+            border:1px solid #cbd5e1;
+            border-radius:10px;
+            padding:18px;
+            margin-bottom:24px;
+            background:#f8fafc;
+        }
+        .word-tag{
+            display:inline-block;
+            background:#dbeafe;
+            padding:4px 8px;
+            border-radius:4px;
+            margin:3px;
+            font-size:14px;
+        }
     </style>
 </head>
 <body>
@@ -108,6 +129,17 @@
         <h1>Jieba中文分词体验工具</h1>
         <p class="desc">体验中文分词三种模式，适合课堂探究。所有计算在浏览器本地运行，文本不会上传。</p>
         <div class="status-tip" id="statusTip">⏳ 正在加载jieba词典...</div>
+
+        <!-- ==========新增自定义词典面板========== -->
+        <div class="dict-panel">
+            <label>📚 更新自定义词典（添加网络新词/专有名词）</label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <input type="text" id="newWordInput" placeholder="输入要新增的词语，例如：泰裤辣、货拉拉、拉布拉多、多肉葡萄">
+                <button class="btn-small" id="addWordBtn">添加词语</button>
+                <button class="btn-small" id="resetDictBtn">重置词典</button>
+            </div>
+            <div class="tip">当前已手动添加词语：<span id="userWordList"></span></div>
+        </div>
 
         <div class="form-item">
             <label>📝 选择预设例句（也可以在下方自定义输入）</label>
@@ -121,12 +153,10 @@
                 <option value="小明去喜茶买一杯多肉葡萄">小明去喜茶买一杯多肉葡萄（活动二）</option>
             </select>
         </div>
-
         <div class="form-item">
             <label>待分词句子</label>
             <textarea id="inputText" placeholder="在这里输入你要分词的中文句子"></textarea>
         </div>
-
         <div class="form-item">
             <label>分词模式选择</label>
             <div class="radio-group">
@@ -144,81 +174,157 @@
                 </div>
             </div>
         </div>
-
         <button id="runBtn" disabled>开始分词</button>
-
         <div class="result-area">
             <label>分词结果（词语使用 / 分隔，方便复制到任务单）</label>
             <div class="result-box" id="resultBox"></div>
-            <p class="tip">💡提示：活动二统一使用【精确模式】进行测试。</p>
+            <p class="tip">💡提示：活动二统一使用【精确模式】进行测试。添加自定义新词可以修复分词错误。</p>
         </div>
     </div>
 
 <script>
-/*!
- * js-jieba 内置版本，无外部依赖
+// =====================模拟jieba词典，扩充基础词汇=====================
+const BASE_DICT = {
+    "南京市":10,"南京":10,"市":10,"长江大桥":10,"长江":10,"大桥":10,
+    "结婚":10,"的":10,"和":10,"尚未":10,"未结婚":10,"结婚的":10,
+    "我":10,"周末":10,"去":10,"刷":10,"B站":10,"Python":10,"教程":10,
+    "泰裤辣":10,"这个":10,"AI":10,"模型":10,"太强了":10,"太强":10,
+    "你的":10,"货拉拉":10,"拉布拉多":10,"小明":10,"喜茶":10,"一杯":10,"多肉葡萄":10,
+    "小明":10,"买":10,"看":10,"，":10
+};
+
+// 用户动态添加的词
+let userDict = {};
+let userAddWords = [];
+
+// 获取合并词典
+function getMergeDict(){
+    return {...BASE_DICT, ...userDict};
+}
+
+// 更新已添加词语UI
+function renderUserWordList(){
+    const dom = document.getElementById("userWordList");
+    if(userAddWords.length===0){
+        dom.innerHTML = "<i>无</i>";
+        return;
+    }
+    dom.innerHTML = userAddWords.map(w=>`<span class="word-tag">${w}</span>`).join(" ");
+}
+
+// =========核心分词算法==========
+/**
+ * 全模式：找出句子所有词典中存在的词语，全部输出
+ * @param {string} str
+ * @param {Object} dict
+ * @returns {string[]}
  */
-const jieba = (function(){
-const DICT = {"南京市":10,"长江大桥":10,"长江":10,"大桥":10,"结婚":10,"和":10,"尚未":10,"未结婚":10,"我":10,"周末":10,"刷":10,"B站":10,"Python":10,"教程":10,"泰裤辣":10,"这个":10,"AI":10,"模型":10,"太强了":10,"你的":10,"货拉拉":10,"拉布拉多":10,"小明":10,"喜茶":10,"一杯":10,"多肉葡萄":10};
-let maxWordLen=0;
-Object.keys(DICT).forEach(k=>{if(k.length>maxWordLen)maxWordLen=k.length;});
-function* cut(str, cut_all=false){
-    let start=0;
-    const len=str.length;
-    while(start<len){
-        let matched=false;
-        for(let l=Math.min(maxWordLen, len-start);l>=1;l--){
-            const w=str.substr(start,l);
-            if(DICT[w]){
-                yield w;
-                start+=l;
-                matched=true;
-                if(!cut_all)break;
+function cutAll(str, dict){
+    const words = [];
+    const maxWordLen = Math.max(...Object.keys(dict).map(k=>k.length));
+    const len = str.length;
+    for(let start=0; start<len; start++){
+        for(let l=1; l <= Math.min(maxWordLen, len-start); l++){
+            const w = str.substr(start,l);
+            if(dict[w]){
+                words.push(w);
             }
         }
-        if(!matched){
-            yield str[start];
+    }
+    return words;
+}
+
+/**
+ * 精确模式：正向最大匹配（课堂教学模拟jieba精确模式）
+ * @param {string} str
+ * @param {Object} dict
+ * @returns {string[]}
+ */
+function cutPrecise(str, dict){
+    const result = [];
+    const maxWordLen = Math.max(...Object.keys(dict).map(k=>k.length));
+    let start = 0;
+    const len = str.length;
+    while(start < len){
+        let matchedWord = null;
+        // 从最长词开始尝试匹配
+        for(let l = Math.min(maxWordLen, len-start); l>=1; l--){
+            const w = str.substr(start,l);
+            if(dict[w]){
+                matchedWord = w;
+                break;
+            }
+        }
+        if(matchedWord){
+            result.push(matchedWord);
+            start += matchedWord.length;
+        }else{
+            //词典未收录，单字输出
+            result.push(str[start]);
             start++;
         }
     }
+    return result;
 }
-function cutForSearch(str){
-    const res=[];
-    for(let w of cut(str,false)){
-        if(w.length>2){
-            for(let i=0;i<w.length-1;i++){
-                const sub=w.substr(i,2);
-                res.push(sub);
+
+/**
+ * 搜索引擎模式：先精确模式，长词再次切分，保留原始+子词，去重，和jieba.cut_for_search行为对齐
+ * @param {string} str
+ * @param {Object} dict
+ * @returns {string[]}
+ */
+function cutForSearch(str, dict){
+    const preciseRes = cutPrecise(str, dict);
+    const outputSet = new Set();
+    for(let word of preciseRes){
+        outputSet.add(word);
+        if(word.length >=3){
+            //对长词语切分2字子片段
+            for(let i=0; i <= word.length - 2; i++){
+                const sub = word.substr(i,2);
+                if(dict[sub]) outputSet.add(sub);
             }
         }
-        res.push(w);
     }
-    return [...new Set(res)];
+    return Array.from(outputSet);
 }
-function load(){}
-return {
-    cut:cut,
-    cutForSearch:cutForSearch,
-    load:load
-}
-})();
 
+// =========页面DOM逻辑=========
 const exampleSelect = document.getElementById('exampleSelect');
 const inputText = document.getElementById('inputText');
 const runBtn = document.getElementById('runBtn');
 const resultBox = document.getElementById('resultBox');
 const statusTip = document.getElementById('statusTip');
 
-function iter2Array(iter) {
-    const arr = [];
-    for(let w of iter) {
-        arr.push(w);
-    }
-    return arr;
-}
+const newWordInput = document.getElementById("newWordInput");
+const addWordBtn = document.getElementById("addWordBtn");
+const resetDictBtn = document.getElementById("resetDictBtn");
 
-jieba.load();
-statusTip.innerText = "✅ 页面就绪，可直接分词";
+//添加自定义词语
+addWordBtn.addEventListener("click", ()=>{
+    const w = newWordInput.value.trim();
+    if(!w){
+        alert("请输入词语");
+        return;
+    }
+    userDict[w] = 10;
+    if(!userAddWords.includes(w)) userAddWords.push(w);
+    renderUserWordList();
+    newWordInput.value = "";
+    alert(`词语【${w}】已经加入词典！现在分词会优先识别这个词`);
+})
+
+//重置用户词典
+resetDictBtn.addEventListener("click",()=>{
+    userDict = {};
+    userAddWords = [];
+    renderUserWordList();
+    alert("已清空手动添加的自定义词，恢复基础词典");
+})
+
+//初始化
+renderUserWordList();
+statusTip.innerText = "✅ 页面就绪，可直接分词；可以手动添加新词改善分词效果";
 statusTip.classList.add('status-ready');
 runBtn.disabled = false;
 
@@ -232,14 +338,15 @@ runBtn.addEventListener('click', function(){
         resultBox.innerText = "请输入或者选择一句句子";
         return;
     }
+    const dict = getMergeDict();
     let mode = document.querySelector('input[name="mode"]:checked').value;
     let words;
     if(mode === 'precise'){
-        words = iter2Array(jieba.cut(text, false));
+        words = cutPrecise(text, dict);
     }else if(mode === 'full'){
-        words = iter2Array(jieba.cut(text, true));
+        words = cutAll(text, dict);
     }else{
-        words = jieba.cutForSearch(text);
+        words = cutForSearch(text, dict);
     }
     resultBox.innerText = words.join(' / ');
 })
