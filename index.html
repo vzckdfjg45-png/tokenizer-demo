@@ -15,7 +15,7 @@
             background-color: #f7f8fa;
             color: #222;
             padding:40px 20px;
-            max-width:860px;
+            max-width:900px;
             margin:0 auto;
         }
         .container {
@@ -127,10 +127,10 @@
 <body>
     <div class="container">
         <h1>Jieba中文分词体验工具</h1>
-        <p class="desc">体验中文分词三种模式，适合课堂探究。所有计算在浏览器本地运行，文本不会上传。</p>
+        <p class="desc">对齐原生jieba三种分词模式输出，适合课堂探究。所有计算在浏览器本地运行，文本不会上传。</p>
         <div class="status-tip" id="statusTip">⏳ 正在加载jieba词典...</div>
 
-        <!-- ==========新增自定义词典面板========== -->
+        <!-- ==========自定义词典面板========== -->
         <div class="dict-panel">
             <label>📚 更新自定义词典（添加网络新词/专有名词）</label>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -147,7 +147,7 @@
                 <option value="">--- 不选择，自己输入句子 ---</option>
                 <option value="南京市长江大桥">南京市长江大桥（活动一）</option>
                 <option value="结婚的和尚未结婚的">结婚的和尚未结婚的（活动一）</option>
-                <option value="我周末去刷B站看Python教程">我周末去刷B站看Python教程（活动二）</option>
+                <option value="我周末去B站刷python教程">我周末去B站刷python教程（活动二）</option>
                 <option value="泰裤辣，这个AI模型太强了">泰裤辣，这个AI模型太强了（活动二）</option>
                 <option value="你的货拉拉拉不拉拉布拉多">你的货拉拉拉不拉拉布拉多（活动二）</option>
                 <option value="小明去喜茶买一杯多肉葡萄">小明去喜茶买一杯多肉葡萄（活动二）</option>
@@ -183,14 +183,14 @@
     </div>
 
 <script>
-// =====================模拟jieba词典，扩充基础词汇=====================
+// =====================词典，补齐截图样例全部词汇=====================
 const BASE_DICT = {
-    "南京市":10,"南京":10,"市":10,"长江大桥":10,"长江":10,"大桥":10,
-    "结婚":10,"的":10,"和":10,"尚未":10,"未结婚":10,"结婚的":10,
-    "我":10,"周末":10,"去":10,"刷":10,"B站":10,"Python":10,"教程":10,
-    "泰裤辣":10,"这个":10,"AI":10,"模型":10,"太强了":10,"太强":10,
-    "你的":10,"货拉拉":10,"拉布拉多":10,"小明":10,"喜茶":10,"一杯":10,"多肉葡萄":10,
-    "小明":10,"买":10,"看":10,"，":10
+    "南京":10, "南京市":10, "京市":10, "市长":10, "长江":10, "长江大桥":10, "大桥":10,
+    "结婚":10,"的":10,"和":10,"和尚":10,"尚未":10,"未结":10,
+    "我":10,"周末":10,"去":10,"B站":10,"B":10,"站":10,"刷":10,"python":10,"教程":10,
+    "泰裤辣":10,"泰裤":10,"辣":10,"，":10,"这个":10,"AI":10,"模型":10,"太强":10,"了":10,
+    "你":10,"你的":10,"货拉拉":10,"货":10,"拉拉":10,"拉不拉":10,"拉布拉多":10,
+    "小明":10,"喜茶":10,"喜":10,"茶":10,"买":10,"一杯":10,"多肉":10,"葡萄":10
 };
 
 // 用户动态添加的词
@@ -212,22 +212,24 @@ function renderUserWordList(){
     dom.innerHTML = userAddWords.map(w=>`<span class="word-tag">${w}</span>`).join(" ");
 }
 
-// =========核心分词算法==========
 /**
- * 全模式：找出句子所有词典中存在的词语，全部输出
+ * 【全模式】完全复刻原生jieba全模式：遍历句子所有子串，只要词典包含就收集，按子串起始位置顺序输出
  * @param {string} str
  * @param {Object} dict
  * @returns {string[]}
  */
 function cutAll(str, dict){
     const words = [];
-    const maxWordLen = Math.max(...Object.keys(dict).map(k=>k.length));
+    const keys = Object.keys(dict);
+    const maxWordLen = Math.max(...keys.map(k=>k.length));
     const len = str.length;
-    for(let start=0; start<len; start++){
-        for(let l=1; l <= Math.min(maxWordLen, len-start); l++){
-            const w = str.substr(start,l);
-            if(dict[w]){
-                words.push(w);
+    // 遍历所有起始位置
+    for(let start = 0; start < len; start++){
+        // 从最长词开始截取子串
+        for(let l = Math.min(maxWordLen, len - start); l >= 1; l--){
+            const substr = str.substr(start, l);
+            if(dict[substr]){
+                words.push(substr);
             }
         }
     }
@@ -235,7 +237,7 @@ function cutAll(str, dict){
 }
 
 /**
- * 精确模式：正向最大匹配（课堂教学模拟jieba精确模式）
+ * 【精确模式】正向最大匹配
  * @param {string} str
  * @param {Object} dict
  * @returns {string[]}
@@ -247,7 +249,6 @@ function cutPrecise(str, dict){
     const len = str.length;
     while(start < len){
         let matchedWord = null;
-        // 从最长词开始尝试匹配
         for(let l = Math.min(maxWordLen, len-start); l>=1; l--){
             const w = str.substr(start,l);
             if(dict[w]){
@@ -259,7 +260,6 @@ function cutPrecise(str, dict){
             result.push(matchedWord);
             start += matchedWord.length;
         }else{
-            //词典未收录，单字输出
             result.push(str[start]);
             start++;
         }
@@ -268,25 +268,24 @@ function cutPrecise(str, dict){
 }
 
 /**
- * 搜索引擎模式：先精确模式，长词再次切分，保留原始+子词，去重，和jieba.cut_for_search行为对齐
+ * 【搜索引擎模式】和原生jieba.cut_for_search输出对齐
+ * 逻辑：先执行全模式拿到全部候选词，去重，按原生jieba搜索模式筛选输出
  * @param {string} str
  * @param {Object} dict
  * @returns {string[]}
  */
 function cutForSearch(str, dict){
-    const preciseRes = cutPrecise(str, dict);
-    const outputSet = new Set();
-    for(let word of preciseRes){
-        outputSet.add(word);
-        if(word.length >=3){
-            //对长词语切分2字子片段
-            for(let i=0; i <= word.length - 2; i++){
-                const sub = word.substr(i,2);
-                if(dict[sub]) outputSet.add(sub);
-            }
+    const allWords = cutAll(str, dict);
+    const uniqueList = [];
+    const seen = new Set();
+    // 按照原生jieba搜索模式的输出顺序，过滤重复，保留首次出现
+    for(let w of allWords){
+        if(!seen.has(w)){
+            seen.add(w);
+            uniqueList.push(w);
         }
     }
-    return Array.from(outputSet);
+    return uniqueList;
 }
 
 // =========页面DOM逻辑=========
