@@ -127,7 +127,7 @@
 <body>
     <div class="container">
         <h1>Jieba中文分词体验工具</h1>
-        <p class="desc">课堂演示<br>⚠️</p>
+        <p class="desc">课堂演示<br></p>
         <div class="status-tip" id="statusTip">⏳ 正在加载jieba词典...</div>
 
         <div class="dict-panel">
@@ -186,7 +186,7 @@
 <script>
 // 基础词典：移除货拉拉、喜茶、多肉葡萄、拉布拉多、泰裤辣，保证活动二可以看到错误现象
 const BASE_DICT = {
-    "南京":1000, "南京市":2000, "京市":10, "市长":800, "长江":1500, "长江大桥":1200, "大桥":900,
+    "南京":1000, "南京市":2000,  "市长":800, "长江":1500, "长江大桥":1200, "大桥":900,
     "结婚":1200,"的":9999,"和":8888,"和尚":600,"尚未":700,"未结":10,
     "我":8888,"周末":1100,"去":7777,"B":10,"站":600,"刷":800,"python":1000,"教程":900,
     "，":9999,"这个":2000,"AI":1000,"模型":800,"太强":700,"了":8888,
@@ -366,7 +366,7 @@ resetDictBtn.addEventListener("click",()=>{
 })
 
 renderUserWordList();
-statusTip.innerText = "✅ 页面就绪；下拉快速填充句子，添加新词后点击分词即可看到分词变化";
+statusTip.innerText = "✅ 词库就绪；下拉快速填充句子，添加新词后点击分词即可看到分词变化";
 statusTip.classList.add('status-ready');
 runBtn.disabled = false;
 
