@@ -179,8 +179,8 @@
     </div>
 
 <script type="module">
-// 引入 WebAssembly 版 Jieba 分词，结果与 Python 版 Jieba 完全一致
-import init, { cut, cut_all, cut_for_search, add_word } from 'https://cdn.jsdelivr.net/npm/jieba-wasm@2.4.0/jieba_wasm.js';
+// 从本地仓库加载 jieba 分词引擎，不依赖外部CDN
+import init, { cut, cut_all, cut_for_search, add_word } from './jieba_rs_wasm.js';
 
 let jiebaReady = false;
 let userAddWords = [];
@@ -205,7 +205,7 @@ async function initJieba() {
         statusTip.classList.add('status-ready');
         runBtn.disabled = false;
     } catch (e) {
-        statusTip.innerText = "❌ 词库加载失败，请检查网络后刷新页面";
+        statusTip.innerText = "❌ 词库加载失败，请刷新页面重试；若多次失败请检查文件是否上传完整";
         console.error("Jieba加载失败:", e);
     }
 }
@@ -237,13 +237,13 @@ addWordBtn.addEventListener("click", () => {
     alert(`词语【${w}】已经加入词典！现在分词会优先识别这个词`);
 })
 
-// 重置自定义词典
+// 重置自定义词显示，刷新页面后词典完全重置
 resetDictBtn.addEventListener("click", () => {
     if(userAddWords.length === 0) {
         alert("当前没有手动添加的词语");
         return;
     }
-    alert("基础词典无法卸载，如需完全重置请刷新页面。\n本次仅清空已添加词语的显示记录。");
+    alert("已清空显示记录，刷新页面后词典将完全恢复初始状态。");
     userAddWords = [];
     renderUserWordList();
 })
@@ -268,13 +268,13 @@ runBtn.addEventListener('click', function(){
     const mode = document.querySelector('input[name="mode"]:checked').value;
     let words;
 
-    // 严格对应 Jieba 三种模式，默认开启 HMM 与官方行为一致
+    // 严格对应 jieba 官方三种模式，开启HMM未登录词识别，结果与Python版完全一致
     if(mode === 'precise'){
-        words = cut(text, true);  // 精确模式 + HMM
+        words = cut(text, true);  // 精确模式
     } else if(mode === 'full'){
         words = cut_all(text);    // 全模式
     } else {
-        words = cut_for_search(text, true); // 搜索引擎模式 + HMM
+        words = cut_for_search(text, true); // 搜索引擎模式
     }
 
     resultBox.innerText = words.join(' / ');
