@@ -14,14 +14,14 @@
         body {
             background-color: #f7f8fa;
             color: #222;
-            padding: 20px 20px; /* 上下内边距缩减，宽度不变 */
+            padding: 20px 20px;
             max-width: 920px;
             margin: 0 auto;
         }
         .container {
             background: #ffffff;
             border-radius: 12px;
-            padding: 24px; /* 容器内边距缩减 */
+            padding: 24px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         }
         h1 {
@@ -30,11 +30,11 @@
         }
         .desc {
             color: #555;
-            margin-bottom: 16px; /* 间距缩减 */
+            margin-bottom: 16px;
             font-size: 15px;
         }
         .form-item {
-            margin-bottom: 16px; /* 表单项间距缩减 */
+            margin-bottom: 16px;
         }
         label {
             display: block;
@@ -44,19 +44,19 @@
         select, textarea, input, button {
             width: 100%;
             font-size: 16px;
-            padding: 8px 12px; /* 输入框内边距缩减 */
+            padding: 8px 12px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
         }
         textarea {
-            min-height: 80px; /* 文本框最小高度缩减 */
+            min-height: 80px;
             resize: vertical;
         }
         .radio-group {
             display: flex;
             gap: 16px;
             flex-wrap: wrap;
-            padding: 4px 0; /* 单选组内边距缩减 */
+            padding: 4px 0;
         }
         .radio-item {
             display: flex;
@@ -81,14 +81,14 @@
             width: auto;
             display: inline-block;
             margin-left: 8px;
-            padding: 6px 14px; /* 小按钮内边距缩减 */
+            padding: 6px 14px;
         }
         .result-area {
-            margin-top: 16px; /* 结果区域上边距缩减 */
+            margin-top: 16px;
         }
         .result-box {
             background: #f3f4f6;
-            padding: 12px; /* 结果框内边距缩减 */
+            padding: 12px;
             border-radius: 8px;
             min-height: 50px;
             white-space: pre-wrap;
@@ -110,8 +110,8 @@
         .dict-panel{
             border: 1px solid #cbd5e1;
             border-radius: 10px;
-            padding: 14px; /* 词典面板内边距缩减 */
-            margin-bottom: 16px; /* 词典面板下边距缩减 */
+            padding: 14px;
+            margin-bottom: 16px;
             background: #f8fafc;
         }
         .word-tag{
@@ -128,7 +128,7 @@
     <div class="container">
         <h1>Jieba中文分词体验工具</h1>
         <p class="desc">课堂演示<br></p>
-        <div class="status-tip" id="statusTip">⏳ 正在加载jieba词典...</div>
+        <div class="status-tip" id="statusTip">⏳ 正在加载jieba分词引擎...</div>
         <div class="dict-panel">
             <label>📚 更新自定义词典（添加网络新词/专有名词）</label>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -146,8 +146,8 @@
                 <option value="结婚的和尚未结婚的">结婚的和尚未结婚的（活动一）</option>
                 <option value="我周末去B站刷python教程">我周末去B站刷python教程（活动二）</option>
                 <option value="泰裤辣，这个AI模型太强了">泰裤辣，这个AI模型太强了（活动二）</option>
-                <option value="你的货拉拉拉不拉拉布拉多">你的货拉拉拉不拉拉布拉多（活动二）</option>
-                <option value="小明去喜茶买一杯多肉葡萄">小明去喜茶买一杯多肉葡萄（活动二）</option>
+                <option value="当时针指向十二点">当时针指向十二点（活动二）</option>
+                <option value="乒乓球拍卖完了">乒乓球拍卖完了（活动二）</option>
             </select>
         </div>
         <div class="form-item">
@@ -177,225 +177,112 @@
             <div class="result-box" id="resultBox"></div>
         </div>
     </div>
-<script>
-// 基础词典：移除货拉拉、喜茶、多肉葡萄、拉布拉多、泰裤辣，保证活动二可以看到错误现象
-const BASE_DICT = {
-    "南京":1000, "南京市":2000,  "市长":800, "长江":1500, "长江大桥":1200, "大桥":900,
-    "结婚":1200,"的":9999,"和":8888,"和尚":600,"尚未":700,"未结":10,
-    "我":8888,"周末":1100,"去":7777,"B":10,"站":600,"刷":800,"python":1000,"教程":900,
-    "，":9999,"这个":2000,"AI":1000,"模型":800,"太强":700,"了":8888,
-    "你":7777,"你的":2000,"货":500,"拉拉":10,"拉不拉":10,
-    "小明":1000,"买":1200,"一杯":1100,"葡萄":800,
-    "今天":1200,"天气":1000,"很":2000,"好":1800,"爱":1000,"北京":1400,"天安门":1300,"我们":1600,"学校":1100,"学习":1200
-};
 
-// ========== 任务一例句：固定输出结果，与图片完全一致 ==========
-const presetResults = {
-    "南京市长江大桥": {
-        full: ["南京", "南京市", "市长", "长江", "长江大桥", "大桥"],
-        precise: ["南京市", "长江大桥"],
-        search: ["南京", "市", "南京市", "长江", "大桥", "长江大桥"]
-    },
-    "结婚的和尚未结婚的": {
-        full: ["结婚", "的", "和尚", "尚未", "结婚", "的"],
-        precise: ["结婚", "的", "和", "尚未", "结婚", "的"],
-        search: ["结婚", "的", "和", "尚未", "结婚", "的"]
-    }
-};
+<script type="module">
+// 引入 WebAssembly 版 Jieba 分词，结果与 Python 版 Jieba 完全一致
+import init, { cut, cut_all, cut_for_search, add_word } from 'https://cdn.jsdelivr.net/npm/jieba-wasm@2.4.0/jieba_wasm.js';
 
-// =========注意：只保存在内存！刷新/重新打开网页，自动重置为空=========
-let userDict = {};
+let jiebaReady = false;
 let userAddWords = [];
-function getMergeDict(){
-    return {...BASE_DICT, ...userDict};
-}
-function renderUserWordList(){
-    const dom = document.getElementById("userWordList");
-    if(userAddWords.length===0){
-        dom.innerHTML = "<i>无</i>";
-        return;
-    }
-    dom.innerHTML = userAddWords.map(w=>`<span class="word-tag">${w}</span>`).join(" ");
-}
-/**
- * 构建DAG有向无环图，复刻jieba构建逻辑
- * @param {string} sentence
- * @param {Object} dict
- * @returns {Object} dag
- */
-function buildDAG(sentence, dict){
-    const dag = {};
-    const len = sentence.length;
-    const keys = Object.keys(dict);
-    const maxWordLen = Math.max(...keys.map(w=>w.length));
-    for(let k=0;k<len;k++){
-        let tmplist = [];
-        let i = k;
-        let frag = sentence[k];
-        while(i<len && frag.length <= maxWordLen){
-            if(dict[frag]){
-                tmplist.push(i);
-            }
-            i++;
-            frag = sentence.substring(k,i+1);
-        }
-        if(tmplist.length===0){
-            tmplist.push(k);
-        }
-        dag[k] = tmplist;
-    }
-    return dag;
-}
-/**
- * 动态规划，求最大概率路径（简化版精确模式）
- * @param {string} sentence
- * @param {Object} dag
- * @param {Object} dict
- * @returns {number[]} path
- */
-function calcMaxProbPath(sentence, dag, dict){
-    const len = sentence.length;
-    const logTotal = Math.log(Object.values(dict).reduce((a,b)=>a+b, 0));
-    const dp = new Array(len+1).fill(-Infinity);
-    const route = new Array(len+1).fill(0);
-    dp[len] = 0;
-    for(let k = len-1; k>=0; k--){
-        for(const i of dag[k]){
-            const word = sentence.substring(k,i+1);
-            const freq = dict[word] || 1;
-            const logProb = Math.log(freq) - logTotal;
-            if(dp[k] < logProb + dp[i+1]){
-                dp[k] = logProb + dp[i+1];
-                route[k] = i;
-            }
-        }
-    }
-    let pos = 0;
-    const path = [];
-    while(pos < len){
-        path.push(pos);
-        pos = route[pos]+1;
-    }
-    path.push(len);
-    return path;
-}
-/**
- * 精确模式 cut_all=False
- */
-function cutPrecise(sentence, dict){
-    const dag = buildDAG(sentence, dict);
-    const path = calcMaxProbPath(sentence, dag, dict);
-    const res = [];
-    for(let i=0;i<path.length-1;i++){
-        const st = path[i];
-        const ed = path[i+1];
-        res.push(sentence.substring(st,ed));
-    }
-    return res;
-}
-/**
- * 全模式 cut_all=True，输出DAG全部候选词
- */
-function cutFull(sentence, dict){
-    const dag = buildDAG(sentence, dict);
-    const words = [];
-    const len = sentence.length;
-    for(let start=0; start<len; start++){
-        for(const endIdx of dag[start]){
-            words.push(sentence.substring(start, endIdx+1));
-        }
-    }
-    return words;
-}
-/**
- * 搜索引擎模式 cut_for_search
- */
-function cutForSearch(sentence, dict){
-    const preciseRes = cutPrecise(sentence, dict);
-    const output = [];
-    for(const w of preciseRes){
-        if(w.length>2){
-            for(let i=0;i<w.length;i++){
-                for(let l=2; l<=w.length-i; l++){
-                    const sub = w.substr(i,l);
-                    output.push(sub);
-                }
-            }
-        }
-        output.push(w);
-    }
-    //顺序保留、去重
-    const final = [];
-    const s = new Set();
-    for(const item of output){
-        if(!s.has(item)){
-            s.add(item);
-            final.push(item);
-        }
-    }
-    return final;
-}
-// DOM事件
+
+// DOM 元素
+const statusTip = document.getElementById('statusTip');
+const runBtn = document.getElementById('runBtn');
 const exampleSelect = document.getElementById('exampleSelect');
 const inputText = document.getElementById('inputText');
-const runBtn = document.getElementById('runBtn');
 const resultBox = document.getElementById('resultBox');
-const statusTip = document.getElementById('statusTip');
 const newWordInput = document.getElementById("newWordInput");
 const addWordBtn = document.getElementById("addWordBtn");
 const resetDictBtn = document.getElementById("resetDictBtn");
-addWordBtn.addEventListener("click", ()=>{
+const userWordList = document.getElementById("userWordList");
+
+// 初始化 Jieba 分词引擎
+async function initJieba() {
+    try {
+        await init();
+        jiebaReady = true;
+        statusTip.innerText = "✅ 词库就绪；下拉快速填充句子，添加新词后点击分词即可看到分词变化";
+        statusTip.classList.add('status-ready');
+        runBtn.disabled = false;
+    } catch (e) {
+        statusTip.innerText = "❌ 词库加载失败，请检查网络后刷新页面";
+        console.error("Jieba加载失败:", e);
+    }
+}
+
+// 渲染用户自定义词列表
+function renderUserWordList() {
+    if(userAddWords.length === 0){
+        userWordList.innerHTML = "<i>无</i>";
+        return;
+    }
+    userWordList.innerHTML = userAddWords.map(w => `<span class="word-tag">${w}</span>`).join(" ");
+}
+
+// 添加自定义词语
+addWordBtn.addEventListener("click", () => {
     const w = newWordInput.value.trim();
     if(!w){
         alert("请输入词语");
         return;
     }
-    userDict[w] = 1000;
+    if(!jiebaReady){
+        alert("词库正在加载中，请稍候再试");
+        return;
+    }
+    add_word(w);
     if(!userAddWords.includes(w)) userAddWords.push(w);
     renderUserWordList();
     newWordInput.value = "";
     alert(`词语【${w}】已经加入词典！现在分词会优先识别这个词`);
 })
-resetDictBtn.addEventListener("click",()=>{
-    userDict = {};
+
+// 重置自定义词典
+resetDictBtn.addEventListener("click", () => {
+    if(userAddWords.length === 0) {
+        alert("当前没有手动添加的词语");
+        return;
+    }
+    alert("基础词典无法卸载，如需完全重置请刷新页面。\n本次仅清空已添加词语的显示记录。");
     userAddWords = [];
     renderUserWordList();
-    alert("已清空手动添加的自定义词，恢复基础词典");
 })
-renderUserWordList();
-statusTip.innerText = "✅ 词库就绪；下拉快速填充句子，添加新词后点击分词即可看到分词变化";
-statusTip.classList.add('status-ready');
-runBtn.disabled = false;
+
+// 例句下拉选择
 exampleSelect.addEventListener('change', function(){
     inputText.value = this.value;
 });
+
+// 执行分词
 runBtn.addEventListener('click', function(){
     const text = inputText.value.trim();
     if(!text){
         resultBox.innerText = "请输入或者选择一句句子";
         return;
     }
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-
-    // 任务一例句：直接返回预设结果，与图片完全一致
-    if(presetResults[text]){
-        const words = presetResults[text][mode];
-        resultBox.innerText = words.join(' / ');
+    if(!jiebaReady){
+        resultBox.innerText = "词库正在加载中，请稍候...";
         return;
     }
 
-    // 自定义输入：走原有的jieba原理分词逻辑
-    const dict = getMergeDict();
+    const mode = document.querySelector('input[name="mode"]:checked').value;
     let words;
+
+    // 严格对应 Jieba 三种模式，默认开启 HMM 与官方行为一致
     if(mode === 'precise'){
-        words = cutPrecise(text, dict);
-    }else if(mode === 'full'){
-        words = cutFull(text, dict);
-    }else{
-        words = cutForSearch(text, dict);
+        words = cut(text, true);  // 精确模式 + HMM
+    } else if(mode === 'full'){
+        words = cut_all(text);    // 全模式
+    } else {
+        words = cut_for_search(text, true); // 搜索引擎模式 + HMM
     }
+
     resultBox.innerText = words.join(' / ');
 })
+
+// 页面初始化
+renderUserWordList();
+initJieba();
 </script>
 </body>
 </html>
