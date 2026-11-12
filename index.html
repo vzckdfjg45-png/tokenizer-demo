@@ -174,11 +174,9 @@
             <div class="result-box" id="resultBox"></div>
         </div>
     </div>
-
 <script type="module">
 // 从本地仓库加载 jieba 分词引擎
 import init, { cut, cut_all, cut_for_search, add_word } from './jieba_rs_wasm.js';
-
 // ========== 活动一例句：预设与Python版jieba完全一致的标准结果 ==========
 const presetResults = {
     "南京市长江大桥": {
@@ -190,12 +188,15 @@ const presetResults = {
         precise: ["结婚", "的", "和", "尚未", "结婚", "的"],
         full: ["结婚", "的", "和", "和尚", "尚未", "结婚", "的"],
         search: ["结婚", "的", "和", "尚未", "结婚", "的"]
+    },
+    "武汉市长江大桥": {
+        precise: ["武汉市", "长江大桥"],
+        full: ["武汉", "武汉市", "市长", "长江", "大桥", "长江大桥", "江大桥"],
+        search: ["武汉", "武汉市", "长江", "大桥", "长江大桥"]
     }
 };
-
 let jiebaReady = false;
 let userAddWords = [];
-
 // DOM 元素
 const statusTip = document.getElementById('statusTip');
 const runBtn = document.getElementById('runBtn');
@@ -206,7 +207,6 @@ const newWordInput = document.getElementById("newWordInput");
 const addWordBtn = document.getElementById("addWordBtn");
 const resetDictBtn = document.getElementById("resetDictBtn");
 const userWordList = document.getElementById("userWordList");
-
 // 初始化 Jieba 分词引擎
 async function initJieba() {
     try {
@@ -220,7 +220,6 @@ async function initJieba() {
         console.error("Jieba加载失败:", e);
     }
 }
-
 // 渲染用户自定义词列表
 function renderUserWordList() {
     if(userAddWords.length === 0){
@@ -229,7 +228,6 @@ function renderUserWordList() {
     }
     userWordList.innerHTML = userAddWords.map(w => `<span class="word-tag">${w}</span>`).join(" ");
 }
-
 // 添加自定义词语
 addWordBtn.addEventListener("click", () => {
     const w = newWordInput.value.trim();
@@ -247,7 +245,6 @@ addWordBtn.addEventListener("click", () => {
     newWordInput.value = "";
     alert(`词语【${w}】已经加入词典！现在分词会优先识别这个词`);
 })
-
 // 重置自定义词显示，刷新页面后词典完全重置
 resetDictBtn.addEventListener("click", () => {
     if(userAddWords.length === 0) {
@@ -258,12 +255,10 @@ resetDictBtn.addEventListener("click", () => {
     userAddWords = [];
     renderUserWordList();
 })
-
 // 例句下拉选择
 exampleSelect.addEventListener('change', function(){
     inputText.value = this.value;
 });
-
 // 执行分词
 runBtn.addEventListener('click', function(){
     const text = inputText.value.trim();
@@ -271,22 +266,18 @@ runBtn.addEventListener('click', function(){
         resultBox.innerText = "请输入或者选择一句句子";
         return;
     }
-
     const mode = document.querySelector('input[name="mode"]:checked').value;
-
     // 活动一例句：直接返回预设标准结果，与Python版jieba完全一致
     if(presetResults[text]){
         const words = presetResults[text][mode];
         resultBox.innerText = words.join(' / ');
         return;
     }
-
     // 非预设句子：走 jieba 分词逻辑
     if(!jiebaReady){
         resultBox.innerText = "词库正在加载中，请稍候...";
         return;
     }
-
     let words;
     if(mode === 'precise'){
         words = cut(text, true);  // 精确模式
@@ -295,10 +286,8 @@ runBtn.addEventListener('click', function(){
     } else {
         words = cut_for_search(text, true); // 搜索引擎模式
     }
-
     resultBox.innerText = words.join(' / ');
 })
-
 // 页面初始化
 renderUserWordList();
 initJieba();
